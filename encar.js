@@ -59,6 +59,8 @@ const translate = require('google-translate-api');
     }
   }
 
+
+  
   console.log('🌐 Переводим данные...');
   const translatedSpecs = {};
   for (const [key, value] of Object.entries(specs)) {

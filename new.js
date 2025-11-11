@@ -15,7 +15,7 @@ app.use(express.json({ limit: '2mb' }));
 // 🔒 безопасный клик с ретраями и fallback'ами
 async function safeClick(page, selector, opts = {}) {
   const {
-    attempts = 4,
+    attempts = 2,
     appearTimeout = 8000,
     betweenAttempts = 700,
     clickDelay = 100,
@@ -165,6 +165,8 @@ app.post('/parse', async (req, res) => {
         );
         comp.specs = specs;
 
+        let schetchik = 0
+
         // 🎨 Цвета кузова
         const bodyColors = await page.$$eval('input[name="color"]', (inputs) =>
           inputs.map((el, i) => {
@@ -191,9 +193,15 @@ app.post('/parse', async (req, res) => {
         comp.charging = [];
 
         for (const bodyColor of bodyColors) {
+
+          schetchik++
           console.log(`🎨 Цвет кузова: ${bodyColor.name}`);
           const okColor = await safeClick(page, `#${bodyColor.id}`);
           if (!okColor) continue;
+
+           if (schetchik === 5) {
+                break
+              }
 
           await page.waitForSelector('.single__slider', { timeout: 15000 });
 
@@ -340,13 +348,18 @@ app.post('/parse', async (req, res) => {
                   .filter((src, i, arr) => arr.indexOf(src) === i)
               );
 
+             
+
               comp.items.push({
                 bodyColorName: bodyColor.name,
                 bodyColorCode: bodyColor.colorCode,
                 bodyColorPrice: bodyColor.price,
-                wheel: wheel.name,
+                wheelName: wheel.name,
                 wheelImage: wheel.img,
-                interior: interior.name,
+                wheelPrice: wheel.price,
+                interiorColor: interior.name,
+                interiorImage: interior.img,
+                interiorPrice: interior.price,
                 accessories,
                 charging,
                 gallery,
