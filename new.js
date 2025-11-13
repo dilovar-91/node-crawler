@@ -98,6 +98,10 @@ app.post('/parse', async (req, res) => {
 
     await page.waitForSelector('._gallery', { timeout: 15000 });
 
+    
+   
+
+
     const compleetes = await page.$$eval(
       '.equipments-select-list-def__item',
       (blocks) =>
@@ -116,17 +120,25 @@ app.post('/parse', async (req, res) => {
         })
     );
 
-    const descriptionHTML = await page.$eval(
-      '.product-page-def .block-def',
-      (el) => el.outerHTML
-    );
-    compleetes.descriptionHTML = descriptionHTML;
+    
 
-    console.log('📦 Найдено комплектаций:', compleetes.length);
+   
 
     for (let comp of compleetes) {
       try {
         console.log('🖱️ Комплектация:', comp.name || comp.value);
+
+        const descriptionHTML = await page.$eval(
+      '.product-page-def .block-def',
+      (el) => el.outerHTML
+    );
+
+    const carName = await page.$eval(
+      'h1',
+      (el) => el.textContent.trim() || el.value,
+    );
+
+    comp.carName = carName;
 
         const clicked = await page.evaluate((v) => {
           const el = document.querySelector(
@@ -164,29 +176,27 @@ app.post('/parse', async (req, res) => {
             }))
         );
         comp.specs = specs;
-
-        let schetchik = 0
+        
 
         // 🎨 Цвета кузова
         const bodyColors = await page.$$eval('input[name="color"]', (inputs) =>
-          inputs.map((el, i) => {
-            const container = el.closest('.picture-select-def');
-            const titleEl = container?.querySelector(
-              '.picture-select-def__title'
-            );
-            const colorEl = container?.querySelector(
-              '.picture-select-def__color span'
-            );
-            return {
-              index: i,
-              id: el.id,
-              name: titleEl?.textContent.trim() || el.value,
-              value: el.value,
-              price: el.dataset.price || '0',
-              colorCode: colorEl?.style.backgroundColor || '',
-            };
-          })
-        );
+  inputs.reduce((acc, el, i) => {
+    if (i === 1) return acc; // stop collecting
+    const container = el.closest('.picture-select-def');
+    const titleEl = container?.querySelector('.picture-select-def__title');
+    const colorEl = container?.querySelector('.picture-select-def__color span');
+
+    acc.push({
+      index: i,
+      id: el.id,
+      name: titleEl?.textContent.trim() || el.value,
+      value: el.value,
+      price: el.dataset.price || '0',
+      colorCode: colorEl?.style.backgroundColor || '',
+    });
+    return acc;
+  }, [])
+);
 
         comp.items = [];
         comp.accessories = [];
@@ -194,14 +204,12 @@ app.post('/parse', async (req, res) => {
 
         for (const bodyColor of bodyColors) {
 
-          schetchik++
+          
           console.log(`🎨 Цвет кузова: ${bodyColor.name}`);
           const okColor = await safeClick(page, `#${bodyColor.id}`);
           if (!okColor) continue;
 
-           if (schetchik === 5) {
-                break
-              }
+          
 
           await page.waitForSelector('.single__slider', { timeout: 15000 });
 
@@ -339,14 +347,22 @@ app.post('/parse', async (req, res) => {
               );
 
               comp.charging = charging;
+              comp.carName = carName;
+              comp.descriptionHTML =  descriptionHTML;
 
               // 📸 собираем галерею
               const gallery = await page.$$eval('.single__slider img', (imgs) =>
-                imgs
-                  .map((img) => img.getAttribute('src'))
-                  .filter((src) => src && !src.includes('clone'))
-                  .filter((src, i, arr) => arr.indexOf(src) === i)
-              );
+  imgs
+    .map((img) => img.getAttribute('src'))
+    .filter((src) => src && !src.includes('clone'))
+    .filter((src, i, arr) => arr.indexOf(src) === i)
+    .sort((a, b) => {
+      const nameA = a.split('/').pop().toLowerCase();
+      const nameB = b.split('/').pop().toLowerCase();
+      return nameA.localeCompare(nameB, 'ru');
+    })
+);
+
 
              
 
@@ -362,8 +378,13 @@ app.post('/parse', async (req, res) => {
                 interiorPrice: interior.price,
                 accessories,
                 charging,
-                gallery,
+                gallery,               
+                
               });
+
+              ///return comp;
+
+              //res.json({ success: true, compleetes });
 
               console.log(
                 `✅ ${comp.name}: ${bodyColor.name} + ${wheel.name} + ${interior.name} → ${gallery.length} фото, ${accessories.length} аксессуаров, ${charging.length} доп. опций`
