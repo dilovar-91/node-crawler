@@ -16,9 +16,9 @@ app.use(express.json({ limit: "2mb" }));
 async function safeClick(page, selector, opts = {}) {
   const {
     attempts = 1,
-    appearTimeout = 8000,
-    betweenAttempts = 700,
-    clickDelay = 100,
+    appearTimeout = 4000,
+    betweenAttempts = 350,
+    clickDelay = 50,
   } = opts;
 
   let labelSelector = null;
@@ -41,7 +41,6 @@ async function safeClick(page, selector, opts = {}) {
       await el.click({ delay: clickDelay });
       return true;
     } catch (err) {
-      // запасной клик через evaluate
       try {
         const clickedEval = await page.evaluate((sel) => {
           const node = document.querySelector(sel);
@@ -53,7 +52,6 @@ async function safeClick(page, selector, opts = {}) {
         if (clickedEval) return true;
       } catch {}
 
-      // запасной клик по label
       if (labelSelector) {
         try {
           await page.waitForSelector(labelSelector, {
@@ -117,10 +115,12 @@ app.post("/parse", async (req, res) => {
           return { name, price, value };
         })
     );
-    let com = 0;
+
+
+    let com = 0 
     for (let comp of compleetes) {
-      com++;
-      if (com > 0) break;
+        com++;
+        if (com > 1) break;
       try {
         console.log("🖱️ Комплектация:", comp.name || comp.value);
 
@@ -173,10 +173,9 @@ app.post("/parse", async (req, res) => {
         );
         comp.specs = specs;
 
-        // 🎨 Цвета кузова
         const bodyColors = await page.$$eval('input[name="color"]', (inputs) =>
           inputs.reduce((acc, el, i) => {
-            if (i === 1) return acc; // stop collecting
+            if (i === 1) return acc;
             const container = el.closest(".picture-select-def");
             const titleEl = container?.querySelector(
               ".picture-select-def__title"
@@ -198,8 +197,7 @@ app.post("/parse", async (req, res) => {
         );
 
         comp.items = [];
-        comp.accessories = [];
-        comp.additional_options = [];
+        
 
         for (const bodyColor of bodyColors) {
           console.log(`🎨 Цвет кузова: ${bodyColor.name}`);
@@ -208,7 +206,6 @@ app.post("/parse", async (req, res) => {
 
           await page.waitForSelector(".single__slider", { timeout: 15000 });
 
-          // 🔘 Колёса
           const wheels = await page.$$eval('input[name="wheel"]', (inputs) =>
             inputs.map((el, i) => {
               const container = el.closest(".picture-select-def");
@@ -241,7 +238,6 @@ app.post("/parse", async (req, res) => {
 
             await page.waitForSelector(".single__slider", { timeout: 15000 });
 
-            // 🪑 Интерьеры
             const interiors = await page.$$eval(
               'input[name="interior"]',
               (inputs) =>
@@ -278,35 +274,26 @@ app.post("/parse", async (req, res) => {
               await new Promise((r) => setTimeout(r, 800));
 
               const accessories = await page.$$eval(
-                ".form-check.form-check-1",
-                (blocks) =>
-                  blocks.map((block, i) => {
-                    const input = block.querySelector(
-                      'input[name="accessories[]"]'
-                    );
-
+                'input[name="accessories[]"]',
+                (inputs) =>
+                  inputs.map((el, i) => {
+                    const label = el.closest("label");
                     const title =
-                      block
-                        .querySelector(".form-check-1__text")
-                        ?.textContent.trim() ||
-                      input?.value ||
-                      "";
-
-                    const price = input?.dataset.price || "0";
-
-                    // ИЩЕМ КНОПКУ ХИНТА ВО ВСЁМ БЛОКЕ
-                    const hintBtn =
-                      block.querySelector("button[data-title]") ||
-                      block.querySelector("button.single__hint") ||
-                      block.querySelector("button.js__tooltip-1") ||
-                      block.querySelector("button");
-
-                    const hintTitle = hintBtn?.getAttribute("data-title") || "";
-                    const hintText = hintBtn?.getAttribute("data-text") || "";
-
+                      label
+                        ?.querySelector(".form-check-1__text")
+                        ?.textContent.trim() || el.value;
+                    const price = el.dataset.price || "0";
+                    const hintTitle =
+                      label
+                        ?.querySelector("button[data-title]")
+                        ?.getAttribute("data-title") || "";
+                    const hintText =
+                      label
+                        ?.querySelector("button[data-text]")
+                        ?.getAttribute("data-text") || "";
                     return {
                       index: i,
-                      id: input?.id || "",
+                      id: el.id,
                       name: title,
                       price,
                       hintTitle,
@@ -315,7 +302,7 @@ app.post("/parse", async (req, res) => {
                   })
               );
 
-              // ⚡ Доп. опции (charging)
+
               const charging = await page.$$eval(
                 'input[name="charging[]"]',
                 (inputs) =>
@@ -349,12 +336,8 @@ app.post("/parse", async (req, res) => {
                   })
               );
 
-              comp.additional_options = charging;
-              comp.carName = carName;
-              comp.descriptionHTML = descriptionHTML;
-              comp.accessories = accessories;
+              
 
-              // 📸 собираем галерею
               const gallery = await page.$$eval(".single__slider img", (imgs) =>
                 imgs
                   .map((img) => img.getAttribute("src"))
@@ -366,12 +349,19 @@ app.post("/parse", async (req, res) => {
                     return nameA.localeCompare(nameB, "ru");
                   })
               );
+              
 
-              comp.items.push({
+              comp.additional_options = charging;
+              comp.carName = carName;
+              comp.descriptionHTML = descriptionHTML;
+              comp.accessories = accessories;
+              comp.gallery = gallery;
+
+              const item = {
                 bodyColorName: bodyColor.name,
                 bodyColorCode: bodyColor.colorCode,
                 bodyColorPrice: bodyColor.price,
-                
+
                 wheelName: wheel.name,
                 wheelImage: wheel.img,
                 wheelPrice: wheel.price,
@@ -379,11 +369,9 @@ app.post("/parse", async (req, res) => {
                 interiorColor: interior.name,
                 interiorImage: interior.img,
                 interiorPrice: interior.price,
-              });
+              };       
 
-              console.log(
-                `✅ ${comp.name}: ${bodyColor.name} + ${wheel.name} + ${interior.name} → ${gallery.length} фото, ${accessories.length} аксессуаров, ${additional_options.length} доп. опций`
-              );
+              comp.items.push(item);
             }
           }
         }
