@@ -12,7 +12,6 @@ app.use(
 );
 app.use(express.json({ limit: "2mb" }));
 
-// 🔒 безопасный клик с ретраями и fallback'ами
 async function safeClick(page, selector, opts = {}) {
   const {
     attempts = 1,
@@ -116,17 +115,20 @@ app.post("/parse", async (req, res) => {
         })
     );
 
-
-    let com = 0 
+    let com = 0;
     for (let comp of compleetes) {
-        com++;
-        if (com > 1) break;
+      com++;
+      if (com > 2) break;
       try {
         console.log("🖱️ Комплектация:", comp.name || comp.value);
 
-        const descriptionHTML = await page.$eval(
+        const descriptionHTML = await page.$$eval(
           ".product-page-def .block-def",
-          (el) => el.outerHTML
+          (elements) =>
+            elements
+              .slice(0, -1)
+              .map((el) => el.outerHTML)
+              .join("\n")
         );
 
         const carName = await page.$eval(
@@ -197,7 +199,6 @@ app.post("/parse", async (req, res) => {
         );
 
         comp.items = [];
-        
 
         for (const bodyColor of bodyColors) {
           console.log(`🎨 Цвет кузова: ${bodyColor.name}`);
@@ -302,7 +303,6 @@ app.post("/parse", async (req, res) => {
                   })
               );
 
-
               const charging = await page.$$eval(
                 'input[name="charging[]"]',
                 (inputs) =>
@@ -336,8 +336,6 @@ app.post("/parse", async (req, res) => {
                   })
               );
 
-              
-
               const gallery = await page.$$eval(".single__slider img", (imgs) =>
                 imgs
                   .map((img) => img.getAttribute("src"))
@@ -349,7 +347,6 @@ app.post("/parse", async (req, res) => {
                     return nameA.localeCompare(nameB, "ru");
                   })
               );
-              
 
               comp.additional_options = charging;
               comp.carName = carName;
@@ -369,7 +366,8 @@ app.post("/parse", async (req, res) => {
                 interiorColor: interior.name,
                 interiorImage: interior.img,
                 interiorPrice: interior.price,
-              };       
+                gallery,
+              };
 
               comp.items.push(item);
             }
