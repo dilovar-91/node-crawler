@@ -387,3 +387,5 @@ app.post("/parse", async (req, res) => {
     await browser.close();
   }
 });
+
+app.listen(8500, () => console.log("✅ Puppeteer parser running on port 8500"));
