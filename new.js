@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import puppeteer from "puppeteer";
 
+const https = require("https");
+const fs = require("fs");
+
 const app = express();
 app.use(
   cors({
@@ -371,7 +374,7 @@ app.post("/parse", async (req, res) => {
                 bodyColorName: bodyColor.name,
                 bodyColorCode: bodyColor.colorCode,
                 bodyColorPrice: bodyColor.price,
-                
+
                 wheelName: wheel.name,
                 wheelImage: wheel.img,
                 wheelPrice: wheel.price,
@@ -402,4 +405,16 @@ app.post("/parse", async (req, res) => {
   }
 });
 
-app.listen(4000, () => console.log("✅ Puppeteer parser running on port 4000"));
+//app.listen(4000, () => console.log("✅ Puppeteer parser running on port 4000"));
+
+https
+  .createServer(
+    {
+      key: fs.readFileSync("/etc/ssl/private/ip.key"),
+      cert: fs.readFileSync("/etc/ssl/certs/ip.crt"),
+    },
+    app
+  )
+  .listen(8500, () => {
+    console.log("HTTPS on 8500");
+  });
