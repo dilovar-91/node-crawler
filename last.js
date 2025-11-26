@@ -388,4 +388,6 @@ app.post("/parse", async (req, res) => {
   }
 });
 
-app.listen(8500, () => console.log("✅ Puppeteer parser running on port 8500"));
+app.listen(8500, "0.0.0.0", () =>
+  console.log("✅ Puppeteer parser running on port 8500")
+);
