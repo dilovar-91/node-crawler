@@ -79,6 +79,10 @@ async function safeClick(page, selector, opts = {}) {
   return false;
 }
 
+app.get("/", (req, res) => {
+  res.send("Hello World");
+});
+
 app.post("/parse", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
@@ -86,7 +90,13 @@ app.post("/parse", async (req, res) => {
   const browser = await puppeteer.launch({
     headless: false,
     defaultViewport: null,
-    args: ["--start-maximized", "--no-sandbox", "--disable-setuid-sandbox"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--no-zygote",
+      "--single-process",
+    ],
   });
 
   const page = await browser.newPage();
