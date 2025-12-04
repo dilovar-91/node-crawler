@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
-
-const puppeteer = require("puppeteer");
+import puppeteer from "puppeteer";
 
 const app = express();
 app.use(
