@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
 
 const app = express();
 app.use(
@@ -90,6 +90,7 @@ app.post("/parse", async (req, res) => {
   const browser = await puppeteer.launch({
     headless: true,
     defaultViewport: null,
+    executablePath: "/usr/bin/google-chrome",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
