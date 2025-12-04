@@ -126,10 +126,10 @@ app.post("/parse", async (req, res) => {
         })
     );
 
-    let com = 0;
+    //let com = 0;
     for (let comp of compleetes) {
-      com++;
-      if (com > 2) break;
+      //com++;
+      //if (com > 2) break;
       try {
         console.log("🖱️ Комплектация:", comp.name || comp.value);
 
