@@ -85,6 +85,10 @@ async function safeClick(page, selector, opts = {}) {
   return false;
 }
 
+app.get("/", (req, res) => {
+  res.send("Hello World");
+});
+
 app.post("/parse", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
